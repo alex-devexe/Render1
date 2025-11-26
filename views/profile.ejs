@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editar Perfil</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, .97);
+            padding: 40px;
+            width: 100%;
+            max-width: 600px;
+            border-radius: 20px;
+            box-shadow: 0 15px 50px rgba(0,0,0,.3);
+            animation: slideIn .6s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-25px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h2 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 25px;
+        }
+
+        label {
+            font-weight: bold;
+            color: #555;
+            display: block;
+            margin-top: 15px;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            margin-top: 6px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            font-size: 15px;
+        }
+
+        textarea {
+            resize: none;
+            height: 100px;
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            text-align: center;
+            margin-top: 25px;
+            padding: 12px;
+            background: #667eea;
+            color: #fff;
+            font-weight: bold;
+            font-size: 16px;
+            border-radius: 12px;
+            text-decoration: none;
+        }
+
+        .btn:hover {
+            background: #5567dd;
+        }
+
+        .btn-secondary {
+            margin-top: 10px;
+            background: #764ba2;
+        }
+
+        .btn-secondary:hover {
+            background: #6b42a0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+
+        <h2>Editar Hoja de Vida</h2>
+
+        <form action="/profile" method="POST">
+
+            <label>Nombre Completo:</label>
+            <input 
+                type="text" 
+                name="full_name" 
+                value="<%= profile ? profile.full_name : '' %>" 
+                required
+            >
+
+            <label>Fecha de Nacimiento:</label>
+            <input 
+                type="date" 
+                name="birthdate" 
+                value="<%= profile ? profile.birthdate.toISOString().substring(0,10) : '' %>"
+            >
+
+            <label>Dirección:</label>
+            <input 
+                type="text" 
+                name="address" 
+                value="<%= profile ? profile.address : '' %>"
+            >
+
+            <label>Teléfono:</label>
+            <input 
+                type="text" 
+                name="phone" 
+                value="<%= profile ? profile.phone : '' %>"
+            >
+
+            <label>Biografía:</label>
+            <textarea name="bio"><%= profile ? profile.bio : '' %></textarea>
+
+            <button class="btn" type="submit">Guardar Cambios</button>
+            <a href="/welcome" class="btn btn-secondary">Volver</a>
+
+        </form>
+
+    </div>
+</body>
+</html>

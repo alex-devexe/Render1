@@ -11,8 +11,7 @@ app.set("view engine", "ejs");
 app.use(express.static("public"));
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// ⚠ MemoryStore se usa solo para pruebas.
-// En producción real se recomienda connect-pg-simple.
+// ⚠ Solo para pruebas (usa otro store en producción)
 app.use(session({
     secret: process.env.SESSION_SECRET || "secreto123",
     resave: false,
@@ -74,7 +73,10 @@ app.post("/login", async (req, res) => {
             return res.send("Contraseña incorrecta.");
         }
 
-        req.session.username = username;
+        // Guardamos más datos en sesión
+        req.session.username = user.username;
+        req.session.userId = user.id;
+
         res.redirect("/welcome");
 
     } catch (err) {
@@ -83,10 +85,73 @@ app.post("/login", async (req, res) => {
     }
 });
 
-// Welcome
-app.get("/welcome", (req, res) => {
-    if (!req.session.username) return res.redirect("/");
-    res.render("welcome", { user: req.session.username });
+// Welcome con datos del perfil
+app.get("/welcome", async (req, res) => {
+    if (!req.session.userId) return res.redirect("/");
+
+    try {
+        const result = await db.query(
+            "SELECT * FROM user_profile WHERE user_id = $1",
+            [req.session.userId]
+        );
+
+        const profile = result.rows[0] || null;
+
+        res.render("welcome", {
+            user: req.session.username,
+            profile
+        });
+
+    } catch (err) {
+        console.error("Error cargando perfil:", err);
+        res.send("Error cargando datos.");
+    }
+});
+
+// Formulario perfil
+app.get("/profile", async (req, res) => {
+    if (!req.session.userId) return res.redirect("/");
+
+    const result = await db.query(
+        "SELECT * FROM user_profile WHERE user_id = $1",
+        [req.session.userId]
+    );
+
+    res.render("profile", { profile: result.rows[0] });
+});
+
+// Guardar perfil
+app.post("/profile", async (req, res) => {
+    const { full_name, birthdate, address, phone, bio } = req.body;
+
+    try {
+        const exists = await db.query(
+            "SELECT id FROM user_profile WHERE user_id = $1",
+            [req.session.userId]
+        );
+
+        if (exists.rows.length > 0) {
+            await db.query(
+                `UPDATE user_profile 
+                 SET full_name=$1, birthdate=$2, address=$3, phone=$4, bio=$5 
+                 WHERE user_id=$6`,
+                [full_name, birthdate, address, phone, bio, req.session.userId]
+            );
+        } else {
+            await db.query(
+                `INSERT INTO user_profile 
+                 (user_id, full_name, birthdate, address, phone, bio) 
+                 VALUES ($1, $2, $3, $4, $5, $6)`,
+                [req.session.userId, full_name, birthdate, address, phone, bio]
+            );
+        }
+
+        res.redirect("/welcome");
+
+    } catch (err) {
+        console.error("Error guardando perfil:", err);
+        res.send("Error guardando información.");
+    }
 });
 
 // Logout
