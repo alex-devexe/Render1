@@ -3,6 +3,7 @@ const session = require("express-session");
 const bodyParser = require("body-parser");
 const bcrypt = require("bcryptjs");
 const db = require("./db");
+require("dotenv").config();
 
 const app = express();
 
@@ -10,13 +11,19 @@ app.set("view engine", "ejs");
 app.use(express.static("public"));
 app.use(bodyParser.urlencoded({ extended: true }));
 
+// ⚠ MemoryStore se usa solo para pruebas.
+// En producción real se recomienda connect-pg-simple.
 app.use(session({
-    secret: "secreto123",
+    secret: process.env.SESSION_SECRET || "secreto123",
     resave: false,
-    saveUninitialized: false
+    saveUninitialized: false,
 }));
 
-// Página de login
+// -------------------------
+//       RUTAS
+// -------------------------
+
+// Login
 app.get("/", (req, res) => {
     res.render("login");
 });
@@ -30,25 +37,38 @@ app.get("/register", (req, res) => {
 app.post("/register", async (req, res) => {
     const { username, password } = req.body;
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    try {
+        const hashedPassword = await bcrypt.hash(password, 10);
 
-    db.query("INSERT INTO users (username, password) VALUES (?, ?)",
-    [username, hashedPassword], (err) => {
-        if (err) throw err;
+        await db.query(
+            "INSERT INTO users (username, password) VALUES ($1, $2)",
+            [username, hashedPassword]
+        );
+
         res.redirect("/");
-    });
+
+    } catch (err) {
+        console.error("Error al registrar usuario:", err);
+        res.send("Error: el usuario ya existe o hubo un problema.");
+    }
 });
 
 // Iniciar sesión
-app.post("/login", (req, res) => {
+app.post("/login", async (req, res) => {
     const { username, password } = req.body;
 
-    db.query("SELECT * FROM users WHERE username = ?", [username], async (err, results) => {
-        if (results.length === 0) {
+    try {
+        const result = await db.query(
+            "SELECT * FROM users WHERE username = $1",
+            [username]
+        );
+
+        if (result.rows.length === 0) {
             return res.send("Usuario no encontrado.");
         }
 
-        const valid = await bcrypt.compare(password, results[0].password);
+        const user = result.rows[0];
+        const valid = await bcrypt.compare(password, user.password);
 
         if (!valid) {
             return res.send("Contraseña incorrecta.");
@@ -56,19 +76,27 @@ app.post("/login", (req, res) => {
 
         req.session.username = username;
         res.redirect("/welcome");
-    });
+
+    } catch (err) {
+        console.error("Error en login:", err);
+        res.send("Error en el servidor.");
+    }
 });
 
-// Página de bienvenida
+// Welcome
 app.get("/welcome", (req, res) => {
     if (!req.session.username) return res.redirect("/");
     res.render("welcome", { user: req.session.username });
 });
 
-// Cerrar sesión
+// Logout
 app.get("/logout", (req, res) => {
-    req.session.destroy();
-    res.redirect("/");
+    req.session.destroy(() => {
+        res.redirect("/");
+    });
 });
 
-app.listen(3000, () => console.log("Servidor en http://localhost:3000"));
+// Servidor
+app.listen(process.env.PORT || 3000, () => {
+    console.log("🚀 Servidor corriendo en puerto", process.env.PORT || 3000);
+});

@@ -1,20 +1,19 @@
-const mysql = require("mysql2");
-require("dotenv").config();  // cargar variables del .env
+const { Client } = require("pg");
+require("dotenv").config();
 
-const connection = mysql.createConnection({
+const client = new Client({
     host: process.env.DB_HOST,
+    port: process.env.DB_PORT,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
-    port: process.env.DB_PORT
-});
-
-connection.connect((err) => {
-    if (err) {
-        console.error("Error al conectar a la BD:", err);
-        return;
+    ssl: {
+        rejectUnauthorized: false
     }
-    console.log("Base de datos conectada.");
 });
 
-module.exports = connection;
+client.connect()
+    .then(() => console.log(" Conectado a Postgres en Render"))
+    .catch(err => console.error("Error de conexión:", err));
+
+module.exports = client;
